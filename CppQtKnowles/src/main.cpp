@@ -1,46 +1,29 @@
 #include <iostream>
 
-enum DeviceState {
-    Offline,
-    Starting,
-    Running,
-    Fault = 10
+
+enum class LogLevel {
+    Debug = 1,
+    Info,
+    Warning,
+    Error = 10
 };
 
-const char* stateToString(DeviceState state)
-{
-    switch (state) {
-    case Offline:
-        return "Offline";
-    case Starting:
-        return "Starting";
-    case Running:
-        return "Running";
-    case Fault:
-        return "Fault";
-    default:
-        return "Unknown";
-    }
-}
-
-enum LogLevel {
-    Debug = 1,
-    Info = 2,
-    Warning = 3,
-    Error = 10
+enum class AuditLevel {
+    Info,
+    Warning
 };
 
 const char* logLevelToString(LogLevel level)
 {
     switch (level)
     {
-    case Debug:
+    case LogLevel::Debug:
         return "Debug";
-    case Info:
+    case LogLevel::Info:
         return "Info";
-    case Warning:
+    case LogLevel::Warning:
         return "Warning";
-    case Error:
+    case LogLevel::Error:
         return "Error";
     default:
         return "Unknown";
@@ -49,19 +32,10 @@ const char* logLevelToString(LogLevel level)
 
 int main()
 {
-    // DeviceState state = Starting;
-    //
-    // if (state == Starting) {
-    //     std::cout << "Device is starting\n";
-    // }
-    //
-    // std::cout << "Name: " << stateToString(state) << '\n';
-    // std::cout << "Number: " << state << '\n';
-
-    LogLevel log = Warning;
+    LogLevel log = LogLevel::Warning;
     std::cout << "Name: " << logLevelToString(log) << '\n';
-    std::cout << "Number: " << log << '\n';
-    if (log == Error)
+    std::cout << "Number: " << static_cast<int>(log) << '\n';
+    if (log == LogLevel::Error)
     {
         std::cout << "log == Error\n";
     }
@@ -69,6 +43,10 @@ int main()
     {
         std::cout << "log != Error\n";
     }
+
+    // LogLevel level = Warning;    // 没有写类型限定符
+    // int number = level;          // 不能隐式转换成整数
+    // bool same = (level == AuditLevel::Warning);  // 不同枚举类型不能比较
 
     return 0;
 }

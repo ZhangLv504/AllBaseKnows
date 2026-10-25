@@ -75,3 +75,87 @@ Number: 3
 log != Error
 ```
 
+## 2. `enum class` 的作用域与类型安全
+
+- 技术标准：C++17
+- 练习工程：`CppQtKnowles`
+- 通关时间：2026-10-25 19:52
+
+### 定义与使用
+
+```cpp
+enum class LogLevel {
+    Debug = 1,
+    Info,
+    Warning,
+    Error = 10
+};
+
+LogLevel level = LogLevel::Warning;
+```
+
+`enum class` 的成员位于枚举类型自己的作用域中，使用时必须通过 `枚举类型::成员` 进行限定。
+
+### 避免名称冲突
+
+```cpp
+enum class LogLevel {
+    Info,
+    Warning
+};
+
+enum class AuditLevel {
+    Info,
+    Warning
+};
+```
+
+两个枚举都可以定义 `Info` 和 `Warning`，因为完整名称分别是 `LogLevel::Info` 和 `AuditLevel::Info`。
+
+### 强类型约束
+
+`enum class` 不会隐式转换成整数，必须显式转换：
+
+```cpp
+LogLevel level = LogLevel::Warning;
+int number = static_cast<int>(level);
+```
+
+不同的枚举类型不能直接比较，即使成员名称和底层整数值相同：
+
+```cpp
+// 编译错误：LogLevel 和 AuditLevel 是不同类型
+// bool same = (level == AuditLevel::Warning);
+```
+
+这些限制可以防止把不同业务概念的状态误用或混合比较。
+
+### 常见错误
+
+```cpp
+// LogLevel level = Warning;   // 缺少 LogLevel:: 作用域限定
+// int number = level;         // 不能隐式转换成整数
+// level == AuditLevel::Warning; // 不同枚举类型不能比较
+```
+
+在 `switch` 中也需要使用完整成员名称，并为未知值提供兜底处理：
+
+```cpp
+switch (level) {
+case LogLevel::Warning:
+    return "Warning";
+default:
+    return "Unknown";
+}
+```
+
+### 通关验证
+
+练习验证了限定作用域、同名成员、显式整数转换、同类型比较以及未知值处理。CMake Debug 构建成功且无警告，程序输出如下：
+
+```text
+Name: Warning
+Number: 3
+log != Error
+```
+
