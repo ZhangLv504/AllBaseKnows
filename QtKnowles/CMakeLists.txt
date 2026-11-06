@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(CppQtKnowles LANGUAGES CXX)
+project(QtKnowles LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,7 +10,7 @@ if(NOT DEFINED CMAKE_PREFIX_PATH AND NOT DEFINED Qt5_DIR)
     set(CMAKE_PREFIX_PATH "E:/Software/Qt/5.15.2/msvc2019_64" CACHE PATH "Qt5 prefix")
 endif()
 
-find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt5 5.15.2 EXACT REQUIRED COMPONENTS Core Gui Widgets)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -35,18 +35,18 @@ file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.qrc"
 )
 
-add_executable(CppQtKnowles
+add_executable(QtKnowles
         ${APP_SOURCES}
 )
 
 # ---------- 包含目录 ----------
 # 确保 src 本身在头文件搜索路径中，便于源码之间互相 #include 以及找到 AUTOUIC 生成的 ui_*.h
-target_include_directories(CppQtKnowles PRIVATE 
+target_include_directories(QtKnowles PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
 # ---------- 链接库 ----------
-target_link_libraries(CppQtKnowles PRIVATE
+target_link_libraries(QtKnowles PRIVATE
     Qt5::Core
     Qt5::Gui
     Qt5::Widgets

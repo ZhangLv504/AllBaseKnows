@@ -1,6 +1,10 @@
-CppQtKnowles/cmake-build-relwithdebinfo
-CppQtKnowles/.idea
-CppQtKnowles/build/
+CppKnowles/cmake-build-*/
+CppKnowles/.idea/
+CppKnowles/build/
+
+QtKnowles/cmake-build-*/
+QtKnowles/.idea/
+QtKnowles/build/
 
 JavaKnows/StudyProj/.idea
 

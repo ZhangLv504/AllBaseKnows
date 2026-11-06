@@ -3,7 +3,7 @@
 ## 1. 传统 `enum` 的定义、使用与隐式转换
 
 - 技术标准：C++17
-- 练习工程：`CppQtKnowles`
+- 练习工程：`CppKnowles`
 - 通关时间：2026-10-25 14:30
 
 ### 本轮目标
@@ -160,7 +160,7 @@ enum ResultCode {
 
 ### 练习题
 
-在 `CppQtKnowles/src/main.cpp` 中完成：
+在 `CppKnowles/src/main.cpp` 中完成：
 
 ```cpp
 enum LogLevel {
@@ -186,29 +186,10 @@ Number: 3
 log != Error
 ```
 
-### 通关检查清单
-
-- `enum` 适合表达什么类型的数据？
-- 未显式指定值时，枚举成员如何编号？
-- 为什么传统枚举能够直接赋值给 `int`？
-- 为什么两个传统枚举可能发生成员名冲突？
-- 为什么整数强制转换成枚举后仍然可能是非法业务值？
-- 有返回值的枚举转换函数为什么必须覆盖未知值？
-
-### 通关验证
-
-练习完成了枚举定义、自动编号、名称转换、整数输出和相等比较。CMake Debug 构建成功且无警告，程序输出如下：
-
-```text
-Name: Warning
-Number: 3
-log != Error
-```
-
 ## 2. `enum class` 的作用域与类型安全
 
 - 技术标准：C++17
-- 练习工程：`CppQtKnowles`
+- 练习工程：`CppKnowles`
 - 通关时间：2026-10-25 19:52
 
 ### 本轮目标
@@ -417,7 +398,7 @@ std::cout << logLevelToString(level);
 
 ### 练习题
 
-在 `CppQtKnowles/src/main.cpp` 中定义：
+在 `CppKnowles/src/main.cpp` 中定义：
 
 ```cpp
 enum class LogLevel {
@@ -455,29 +436,10 @@ Number: 3
 log != Error
 ```
 
-### 通关检查清单
-
-- 为什么必须写 `LogLevel::Warning`？
-- 为什么两个 `enum class` 可以拥有同名成员？
-- 为什么不能直接执行 `int number = level`？
-- 为什么 `LogLevel` 不能与 `AuditLevel` 比较？
-- 如何取得 `enum class` 对应的整数？
-- 在 `switch` 中为什么也要使用完整成员名称？
-
-### 通关验证
-
-练习验证了限定作用域、同名成员、显式整数转换、同类型比较以及未知值处理。CMake Debug 构建成功且无警告，程序输出如下：
-
-```text
-Name: Warning
-Number: 3
-log != Error
-```
-
 ## 3. 枚举底层类型、显式转换与工程实践
 
 - 技术标准：C++17
-- 练习工程：`CppQtKnowles`
+- 练习工程：`CppKnowles`
 - 讲义记录时间：2026-10-25 20:53
 - 通关时间：2026-10-25 21:16
 - 当前状态：已通关
@@ -777,7 +739,7 @@ enum class ErrorCode : std::uint16_t {
 
 ### 练习题
 
-请修改 `CppQtKnowles/src/main.cpp`。
+请修改 `CppKnowles/src/main.cpp`。
 
 #### 1. 定义枚举
 
@@ -820,44 +782,13 @@ Received type: Logout
 Rejected raw value: 99
 ```
 
-### 通关检查清单
-
-完成后应能回答：
-
-- `enum class PacketType : std::uint8_t` 中冒号后的类型有什么作用？
-- 为什么网络协议枚举应显式指定数值？
-- `std::underlying_type_t` 能得到什么？
-- 为什么输出 `uint8_t` 时要转成 `int`？
-- 为什么 `static_cast<PacketType>(raw)` 不等于合法性校验？
-- 外部整数转换成枚举的安全顺序是什么？
-
-### 通关验证
-
-练习代码位于 `CppQtKnowles/src/main.cpp`，完成了以下内容：
-
-- 使用 `std::uint8_t` 固定 `PacketType` 的底层类型。
-- 为协议成员显式指定 `1`、`2`、`10`。
-- 使用 `std::underlying_type_t` 获取底层类型。
-- 使用 `static_assert` 在编译期确认底层类型。
-- 在整数转换成枚举前验证合法性。
-- 正确拒绝未定义的协议值 `99`。
-- 显式包含 `<cstdint>` 和 `<type_traits>`，不依赖间接包含。
-
-CMake Debug 构建成功且无警告，程序退出码为 `0`，实际输出如下：
-
-```text
-1
-2
-Logout
-接收到非法值
-```
-
-## 4. `push_back` 与 `emplace_back` 的选择规则（学习中/待通关）
+## 4. `push_back` 与 `emplace_back` 的选择规则
 
 - 技术标准：C++17
-- 练习工程：`CppQtKnowles`
+- 练习工程：`CppKnowles`
 - 讲义记录时间：2026-10-25 22:57
-- 当前状态：待完成练习和通关验证
+- 通关时间：2026-10-26 20:14
+- 当前状态：已通关
 
 ### 本轮目标
 
@@ -1131,7 +1062,7 @@ C++17 纯聚合类型
 
 ### 练习题
 
-在 `CppQtKnowles/src/main.cpp` 中完成以下练习：
+在 `CppKnowles/src/main.cpp` 中完成以下练习：
 
 1. 定义带有 `id`、`name` 和构造函数的 `User`。
 2. 创建已有对象 `alice`，使用 `push_back(alice)` 插入副本。
@@ -1141,16 +1072,204 @@ C++17 纯聚合类型
 6. 定义聚合类型 `Point { int x; int y; }`，在 C++17 中使用 `push_back({10, 20})` 插入。
 7. 遍历并输出所有数据，证明插入结果正确。
 
-### 通关检查清单
+## 5. 花括号初始化列表与 `emplace_back` 的模板推导失败
 
-- `push_back` 和 `emplace_back` 分别接收什么？
-- 已经有一个目标类型对象时为什么通常选 `push_back`？
-- 哪种情况下 `emplace_back` 可能省掉一次临时对象移动？
-- 为什么 `emplace_back(existingObject)` 仍可能复制？
-- 为什么 `emplace_back({1, 2, 3})` 可能无法编译？
-- 为什么 C++17 聚合类型常使用 `push_back({ ... })`？
-- `emplace_back` 能否避免 `vector` 扩容搬迁旧元素？
-- 为什么智能指针通常推荐 `push_back(std::make_unique<T>(...))`？
+- 技术标准：C++17
+- 关联容器：`std::vector`
+- 关联知识：可变参数模板、模板类型推导、完美转发、列表初始化
 
-> 通关验证将在练习完成并通过编译、运行检查后补充。
+### 问题现象
+
+假设 `matrix` 的类型如下：
+
+```cpp
+std::vector<std::vector<int>> matrix;
+```
+
+`push_back` 可以直接接受花括号初始化列表：
+
+```cpp
+matrix.push_back({4, 5, 6}); // 正确
+```
+
+但下面的 `emplace_back` 调用不能通过编译：
+
+```cpp
+// 错误：无法从裸花括号初始化列表推导参数包类型
+matrix.emplace_back({4, 5, 6});
+```
+
+MSVC 的错误信息中可能出现 `_Valty&&...`、`_Val` 等名称。这些是标准库实现内部使用的模板参数名，不是标准规定的接口名称。问题的本质仍然是：编译器无法从 `{4, 5, 6}` 推导 `emplace_back` 的模板参数类型。
+
+### 一、`emplace_back` 的签名与完美转发
+
+`emplace_back` 通过可变参数模板和完美转发实现。C++17 中可以将其接口大致理解为：
+
+```cpp
+template<class... Args>
+reference emplace_back(Args&&... args);
+```
+
+其中：
+
+- `Args...` 是模板参数包。
+- `Args&&...` 是一组转发引用。
+- 容器会使用 `std::forward<Args>(args)...`，在元素的最终存储位置构造对象。
+- 对于 `std::vector<std::vector<int>>`，最终需要构造的元素类型是 `std::vector<int>`。
+
+正常传入有明确类型的参数时，编译器可以推导 `Args...`：
+
+```cpp
+matrix.emplace_back(3, 10);
+```
+
+这里会匹配 `std::vector<int>` 的“数量加初始值”构造函数，构造一个包含三个 `10` 的内层 `vector`。
+
+### 二、为什么 `{4, 5, 6}` 推导失败
+
+裸花括号 `{4, 5, 6}` 是一个 braced-init-list，但它本身不是具有某个普通静态类型的表达式。
+
+根据上下文，它可能用于：
+
+- 构造 `std::initializer_list<int>`。
+- 初始化数组。
+- 初始化聚合类型。
+- 调用某个类的列表构造函数。
+
+调用下面的函数模板时：
+
+```cpp
+template<class... Args>
+void function(Args&&... args);
+```
+
+编译器必须先从实参推导 `Args...`。但 `{4, 5, 6}` 没有可直接用于推导的普通类型，而形参也不是明确的 `std::initializer_list<T>`，所以推导失败。
+
+换句话说，`emplace_back` 虽然知道最终要构造 `std::vector<int>`，但在进入元素构造阶段之前，函数模板调用本身必须先完成参数包推导；裸花括号使这一步无法完成。
+
+### 三、为什么 `push_back({4, 5, 6})` 可以
+
+`push_back` 不是依靠本次函数调用来推导元素类型的函数模板。对于已经实例化的 `std::vector<std::vector<int>>`，它的重载参数类型已经确定：
+
+```cpp
+void push_back(const std::vector<int>& value);
+void push_back(std::vector<int>&& value);
+```
+
+编译器明确知道目标类型是 `std::vector<int>`，因此可以检查：
+
+```cpp
+{4, 5, 6}
+```
+
+能否构造一个 `std::vector<int>`。答案是可以，因为 `std::vector<int>` 提供了接受 `std::initializer_list<int>` 的构造函数。
+
+整个过程可以理解为：
+
+```text
+{4, 5, 6}
+    ↓ 目标类型已经确定
+std::vector<int>{4, 5, 6}
+    ↓
+移动或绑定到 push_back 的参数
+```
+
+### 四、正确替代写法
+
+#### 方法 1：直接使用 `push_back`
+
+```cpp
+matrix.push_back({4, 5, 6});
+```
+
+对于裸花括号初始化，这是最简洁、语义最清楚的写法。
+
+#### 方法 2：显式构造完整元素对象
+
+```cpp
+matrix.emplace_back(std::vector<int>{4, 5, 6});
+```
+
+这能通过编译，因为传给 `emplace_back` 的实参已经具有明确类型 `std::vector<int>`。但它先创建了临时对象，再将临时对象移动到容器中，没有体现 `emplace_back` 直接传递构造参数的主要优势。
+
+#### 方法 3：显式提供 `initializer_list` 类型
+
+```cpp
+matrix.emplace_back(std::initializer_list<int>{4, 5, 6});
+```
+
+现在实参具有明确类型，`Args...` 可以完成推导，并能调用内层 `std::vector<int>` 的 initializer-list 构造函数。
+
+虽然这种写法保留了原地构造语义，但通常不如 `push_back({4, 5, 6})` 简洁。
+
+### 五、容易混淆的反例
+
+下面的调用可以编译，但含义完全不同：
+
+```cpp
+matrix.emplace_back(4, 5);
+```
+
+它不会构造 `{4, 5}`，而是匹配 `std::vector<int>(size_type count, const int& value)`，得到：
+
+```text
+5 5 5 5
+```
+
+也就是四个值为 `5` 的元素。
+
+这说明 `emplace_back` 接收的是构造函数参数，而不是把所有参数自动理解成列表中的成员。
+
+### 企业场景中的选择
+
+如果一个接口接收一批整数并追加为新的一行，下面的写法最容易读懂：
+
+```cpp
+matrix.push_back({4, 5, 6});
+```
+
+如果数据已经存放在有明确类型的变量中，可以根据对象是否还需要使用选择复制或移动：
+
+```cpp
+std::vector<int> row{4, 5, 6};
+
+matrix.push_back(row);            // 复制，row 保持原值
+matrix.push_back(std::move(row)); // 移动，不再依赖 row 的原内容
+```
+
+不要为了统一使用 `emplace_back` 而写出更复杂、含义更弱的代码。接口选择应优先表达数据当前的形态：已有对象使用 `push_back`，独立构造参数使用 `emplace_back`，裸花括号列表通常使用 `push_back`。
+
+### 最小验证练习
+
+```cpp
+#include <iostream>
+#include <initializer_list>
+#include <vector>
+
+int main()
+{
+    std::vector<std::vector<int>> matrix;
+
+    matrix.push_back({1, 2, 3});
+    matrix.emplace_back(std::initializer_list<int>{4, 5, 6});
+    matrix.emplace_back(4, 5);
+
+    for (const auto& row : matrix) {
+        for (int value : row) {
+            std::cout << value << ' ';
+        }
+        std::cout << '\n';
+    }
+}
+```
+
+输出：
+
+```text
+1 2 3
+4 5 6
+5 5 5 5
+```
+
+核心结论：`emplace_back` 擅长把具有明确类型的构造参数完美转发给元素构造函数；裸花括号初始化列表没有可供普通模板参数直接推导的类型，因此此时通常应使用 `push_back({ ... })`。
 
