@@ -2,36 +2,33 @@
 #include <QStringList>
 #include <QDebug>
 #include <QSqlDatabase>
+#include <QApplication>
 
+#include "dbPack/DatabaseService.h"
 #include "MySqlDatabase.h"
+#include "demo1/DisplayEmployeeInfo.h"
 
-namespace
+int main(int argc, char * argv[])
 {
-    bool connectToDB()
+    QApplication app (argc, argv) ;
+
+    // 默认初始化数据库连接
+    QString error;
+    if (!DatabaseService::instance().init(
+        QStringLiteral ( "127.0.0.1" ),
+        3306 ,
+        QStringLiteral ( "zl_study_db" ),
+        QStringLiteral ( "504504" ), &error))
     {
-        // const QStringList drivers = QSqlDatabase::drivers();
-        // qInfo().noquote() << "可用数据库驱动:" << drivers.join(QStringLiteral(", "));
-        //
-        // if (!drivers.contains(QStringLiteral("QMYSQL"))) {
-        //     qCritical() << "QMYSQL 插件未加载，请检查 sqldrivers/qsqlmysql.dll 与 libmysql.dll 是否可被搜索到。";
-        //     return false;
-        // }
-
-        qtmysql::MySqlDatabase database;
-        QString error;
-        if (!database.connect(QStringLiteral("127.0.0.1"), 3306, QStringLiteral("zl_study_db"),
-                              QStringLiteral("504504"), &error)) {
-            qCritical().noquote() << "连接失败:" << error;
-            return false;
-                              }
-        qInfo().noquote() << "连接成功:" << database.connectionName();
-        return true;
+        qCritical().noquote () << "启动失败，数据库不可用:" << error;
+        return 1 ;
     }
-}
 
-int main()
-{
+    DisplayEmployeeInfo employeeInfo;
+    employeeInfo.show();
 
+    const int code = app.exec();
+    DatabaseService::instance().shutdown();
 
-    return 0;
+    return code;
 }

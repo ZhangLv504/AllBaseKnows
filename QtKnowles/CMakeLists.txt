@@ -29,6 +29,8 @@ else()
     add_compile_options(-finput-charset=UTF-8)
 endif()
 
+link_directories("${CMAKE_SOURCE_DIR}/lib")
+
 # ---------- 收集 src 目录下的源文件 ----------
 # 使用 GLOB_RECURSE 递归扫描 src 文件夹，以后在 src 里建子文件夹也能自动包含
 file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
@@ -45,22 +47,15 @@ add_executable(QtKnowles
 
 # 可执行文件与运行时依赖统一输出到交付目录 bin
 set_target_properties(QtKnowles PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib"
 )
 
 # ---------- 包含目录 ----------
 # 确保 src 本身在头文件搜索路径中，便于源码之间互相 #include 以及找到 AUTOUIC 生成的 ui_*.h
 target_include_directories(QtKnowles PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
-)
-
-# ---------- QtMySQL 交付副本 ----------
-# QtMySQL 是同级独立工程，构建后把 DLL、导入库和头文件复制到本工程
-add_library(QtMySQL SHARED IMPORTED)
-set_target_properties(QtMySQL PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/bin/QtMySQL.dll"
-    IMPORTED_IMPLIB "${CMAKE_CURRENT_SOURCE_DIR}/lib/QtMySQL.lib"
-    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/publics/include"
+    "${CMAKE_SOURCE_DIR}/publics/include"
 )
 
 # ---------- 链接库 ----------
