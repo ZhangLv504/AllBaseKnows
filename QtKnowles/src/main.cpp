@@ -25,6 +25,7 @@ int main(int argc, char * argv[])
     }
 
     DisplayEmployeeInfo employeeInfo;
+    employeeInfo.setMinimumSize(800, 600);
     employeeInfo.show();
 
     const int code = app.exec();

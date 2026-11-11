@@ -21,6 +21,11 @@ struct EmployeeInfo
     QString department;
 };
 
+enum class EmployeeDataRole
+{
+    EmployeeKeyRole = Qt::UserRole + 1
+};
+
 class DisplayEmployeeInfo : public QWidget
 {
     Q_OBJECT

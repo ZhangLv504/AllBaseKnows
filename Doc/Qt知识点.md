@@ -171,3 +171,268 @@ void attachModel(QTableView *view)
 6. 构建并运行，确认表头、5 行数据、中文内容均正常显示。
 
 完成后请提交 `QtKnowles/src/main.cpp` 的实现以及构建/运行结果，再进行本知识点的通关验证。
+
+---
+
+## 知识点 02：QModelIndex、数据角色、表头、可编辑性与选择行为
+
+> 状态：已通关
+>
+> 开始时间：2026-11-11
+>
+> 通关时间：2026-11-11 23:49
+
+### 本轮目标
+
+1. 理解 `QModelIndex` 是 View 和 Model 之间定位数据的通用坐标，而不是业务数据本身。
+2. 能使用不同的 `Qt::ItemDataRole` 为同一个索引提供显示值、编辑值、提示信息和业务 ID。
+3. 能通过模型设置表头，并区分表头数据与普通单元格数据。
+4. 能控制哪些单元格允许编辑，以及设置整行单选行为。
+5. 能从用户点击的索引找到整行及对应稳定业务键，而不依赖当前行号作为身份。
+
+### 一、QModelIndex：模型中的通用位置
+
+`QModelIndex` 可以理解为模型发出的一个轻量位置描述，主要包含：
+
+- 行号 `row()`；
+- 列号 `column()`；
+- 所属模型 `model()`；
+- 树形模型中的父索引 `parent()`；表格的顶层索引通常没有有效父索引。
+
+它不拥有数据，也不复制单元格内容。View 拿着索引向 Model 询问数据：
+
+```cpp
+const QModelIndex index = m_employeeInfoMode->index(0, 2);
+if (index.isValid()) {
+    const QString name = m_employeeInfoMode
+        ->data(index, Qt::DisplayRole)
+        .toString();
+}
+```
+
+这比直接调用 `QStandardItemModel::item()` 更通用。未来换成自定义 `QAbstractTableModel` 后，`index()`、`data()` 和 Role 的用法仍然成立。
+
+从用户点击的某一列切换到同一行的另一列，可以使用：
+
+```cpp
+const QModelIndex codeIndex = clickedIndex.sibling(clickedIndex.row(), 1);
+```
+
+普通 `QModelIndex` 可能在插入、删除、排序或模型重置后失效。业务逻辑如果需要长期记住一个员工，应保存稳定业务键。本轮编号在数据库中唯一，而且练习要求编号列只读，因此可以用编号；如果以后业务允许改编号，应改用不可变主键。确实需要跨结构变化保留索引时才考虑 `QPersistentModelIndex`。
+
+### 二、数据角色：一个格子不只有一份数据
+
+调用模型的 `data(index, role)` 时，Role 表示“这次想问哪一种数据”。常见 Role 如下：
+
+| Role | 作用 |
+| --- | --- |
+| `Qt::DisplayRole` | View 正常显示的文本或值 |
+| `Qt::EditRole` | 进入编辑器时使用的值 |
+| `Qt::ToolTipRole` | 鼠标悬停时的提示 |
+| `Qt::DecorationRole` | 图标、图片等装饰 |
+| `Qt::TextAlignmentRole` | 文本对齐方式 |
+| `Qt::CheckStateRole` | 复选框状态 |
+| `Qt::ForegroundRole` / `Qt::BackgroundRole` | 前景色和背景色 |
+| `Qt::UserRole` 及更大的值 | 应用自定义数据，例如数据库主键或唯一业务编号 |
+
+企业代码不要到处裸写 `Qt::UserRole + 1`，应给角色命名：
+
+```cpp
+enum EmployeeDataRole
+{
+    EmployeeKeyRole = Qt::UserRole + 1
+};
+```
+
+显示内容和业务身份可以保存在同一个 item 中：
+
+```cpp
+auto* codeItem = new QStandardItem(employeeInfo.code);
+codeItem->setData(employeeInfo.code, EmployeeKeyRole);
+codeItem->setData(
+    QStringLiteral("唯一员工编号：%1").arg(employeeInfo.code),
+    Qt::ToolTipRole);
+```
+
+读取时只通过模型接口：
+
+```cpp
+const QString employeeKey =
+    m_employeeInfoMode->data(codeIndex, EmployeeKeyRole).toString();
+const QString displayCode =
+    m_employeeInfoMode->data(codeIndex, Qt::DisplayRole).toString();
+```
+
+当前编号在数据库中唯一，本轮界面又把编号列设为只读，因此它可以作为本次练习的稳定业务键。把它放入自定义 Role 的意义是让代码明确区分“用于显示的值”和“用于定位记录的业务身份”；以后即使显示格式变为 `员工-20260001`，Role 中仍可保留原始编号。若未来允许修改编号，则应使用不可变主键作为 Role 值。
+
+### 三、表头也是模型数据
+
+表头不是 `QTableView` 自己保存的文本，而是模型通过 `headerData()` 提供的数据。`QStandardItemModel` 的便利写法是：
+
+```cpp
+m_employeeInfoMode->setHorizontalHeaderLabels({
+    QStringLiteral("序号"),
+    QStringLiteral("编号"),
+    QStringLiteral("姓名"),
+    QStringLiteral("部门")
+});
+```
+
+更通用的写法是按方向、序号和 Role 设置：
+
+```cpp
+m_employeeInfoMode->setHeaderData(
+    1, Qt::Horizontal, QStringLiteral("编号"), Qt::DisplayRole);
+m_employeeInfoMode->setHeaderData(
+    1, Qt::Horizontal, QStringLiteral("员工唯一编号，只读"), Qt::ToolTipRole);
+```
+
+横向表头的 section 对应列号；纵向表头的 section 对应行号。
+
+### 四、可编辑性由 Model/Item 的 flags 决定
+
+`QStandardItem` 默认可编辑。只读列可以直接设置：
+
+```cpp
+sequenceItem->setEditable(false);
+codeItem->setEditable(false);
+nameItem->setEditable(true);
+departmentItem->setEditable(true);
+```
+
+底层含义是调整 `Qt::ItemIsEditable` 标志。View 的 `editTriggers` 决定“用户通过什么动作尝试编辑”，Model/Item 的 flags 决定“这个索引是否允许编辑”，二者职责不同。
+
+```cpp
+ui->tableView->setEditTriggers(
+    QAbstractItemView::DoubleClicked |
+    QAbstractItemView::SelectedClicked);
+```
+
+本轮修改 `QStandardItemModel` 只会改变内存中的 item，不会自动执行 SQL 更新。数据库回写、校验和失败回滚以后再学习，不能把“界面可编辑”误认为“数据库已更新”。
+
+### 五、选择行为与 Selection Model
+
+员工表通常希望点击任意单元格都选中整行，并且一次只选一名员工：
+
+```cpp
+ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+```
+
+`currentIndex()` 表示当前索引，`selectedRows()` 可以取得选中的行索引：
+
+```cpp
+const QModelIndex current = ui->tableView->currentIndex();
+if (current.isValid()) {
+    const QModelIndex codeIndex = current.sibling(current.row(), 1);
+    const QString employeeKey =
+        m_employeeInfoMode->data(codeIndex, EmployeeKeyRole).toString();
+}
+```
+
+需要注意：调用 `setModel()` 会使 View 建立新的 Selection Model。如果要连接 `selectionChanged` 等选择信号，应在 `setModel()` 之后连接 `ui->tableView->selectionModel()`。
+
+### 六、结合当前员工表的最小增量示例
+
+练习位置：
+
+- `QtKnowles/src/demo1/DisplayEmployeeInfo.h`
+- `QtKnowles/src/demo1/DisplayEmployeeInfo.cpp`
+
+先定义当前表格使用的稳定业务键 Role：
+
+```cpp
+enum EmployeeDataRole
+{
+    EmployeeKeyRole = Qt::UserRole + 1
+};
+```
+
+当前工程已经确认 `code` 在数据库中唯一，而且本轮要求编号列只读，因此 SQL 继续查询 `code` 即可，不强制额外读取自增 `id`：
+
+```cpp
+SELECT code, name, department
+FROM employer_info1
+ORDER BY id
+```
+
+填充编号列时把原始编号同时写入 `EmployeeKeyRole`。双击任意单元格时，通过传入的 `QModelIndex` 读取同一行编号列上的稳定业务键：
+
+```cpp
+connect(ui->tableView, &QTableView::doubleClicked,
+        this, [this](const QModelIndex& index) {
+    if (!index.isValid()) {
+        return;
+    }
+
+    const QModelIndex codeIndex = index.sibling(index.row(), 1);
+    const QString employeeKey =
+        m_employeeInfoMode->data(codeIndex, EmployeeKeyRole).toString();
+    const QString displayCode =
+        m_employeeInfoMode->data(codeIndex, Qt::DisplayRole).toString();
+
+    qInfo().noquote()
+        << "当前员工:" << employeeKey
+        << "显示编号:" << displayCode;
+});
+```
+
+### 七、企业场景示例
+
+员工表经过排序后，“第 5 行”可能不再是原来的员工。删除、编辑和打开详情页时，应从当前行的 `EmployeeKeyRole` 读取唯一员工编号，再调用业务接口，而不能拿 `row()` 当记录身份。
+
+自增 `id` 是代理键，`code` 是自然业务键。两者都可能唯一，但只有在编号不允许修改的使用范围内，`code` 才能长期作为稳定身份。本轮编号列只读，因此练习选择 `code`；如果将来业务允许修改编号，或者只是在代码中“约定唯一”而数据库没有唯一约束，则应改用数据库主键。
+
+同一个格子可以同时拥有：
+
+- `DisplayRole`：界面显示的员工编号；
+- `EditRole`：编辑器使用的值；
+- `ToolTipRole`：字段说明；
+- `EmployeeKeyRole`：原始唯一员工编号。
+
+View 只根据自己需要的 Role 取值，业务代码也能读取稳定身份信息。虽然当前 `DisplayRole` 和 `EmployeeKeyRole` 初始值相同，但两者的职责不同，显示格式变化不应改变业务键。
+
+### 八、反例与常见坑
+
+#### 1. 把行号当业务 ID
+
+排序、过滤、插入和删除都会改变行号。行号只表示当前模型位置，业务操作必须使用稳定业务键。
+
+#### 2. 为了保存 ID 解析显示文本
+
+不要从“员工 1001”字符串中截取 ID。显示格式一改，业务逻辑就会失效。应使用自定义 Role。
+
+#### 3. 长期保存普通 QModelIndex
+
+模型结构变化后旧索引可能失效。短期信号处理可以使用它；长期业务状态应保存稳定业务键，必要时才使用 `QPersistentModelIndex`。
+
+#### 4. 只在代码里假设编号唯一
+
+使用编号作为长期业务键的前提应由数据库唯一约束和不可修改规则共同保证，而不能只靠界面代码约定。本轮只在编号列只读的练习范围内使用它；如果编号允许修改，就应使用不可变主键定位记录。
+
+#### 5. 只设置 editTriggers 就认为列只读
+
+`editTriggers` 是 View 级别的触发方式。某个索引能否编辑应由 item/model flags 控制。
+
+#### 6. 认为编辑 QStandardItem 会自动更新数据库
+
+当前模型是内存模型，编辑只改变内存数据。数据库写回需要单独设计校验、SQL、失败提示和回滚。
+
+#### 7. 在 setModel() 之前保存 selectionModel()
+
+`setModel()` 会替换选择模型。需要监听选择变化时，先设置 Model，再获取并连接 Selection Model。
+
+### 九、本轮练习
+
+在现有 `QtKnowles/src/demo1/DisplayEmployeeInfo.*` 上完成：
+
+1. 以“编号在数据库中唯一，并且本轮编号列只读”为本轮身份契约，不要求给 `EmployeeInfo` 增加自增 `id`；若未来允许改编号，再切换为不可变主键。
+2. 定义命名的自定义角色 `EmployeeKeyRole = Qt::UserRole + 1`。
+3. 把原始员工编号保存到编号列 item 的 `EmployeeKeyRole`，并为编号列设置 `ToolTipRole`。
+4. 序号、编号两列只读；姓名、部门两列允许编辑。
+5. 表格设置为整行单选，并保留双击可编辑行为。
+6. 使用 `setHeaderData()` 至少给“编号”表头设置一个 ToolTip。
+7. 双击任意单元格时，使用 `QModelIndex::sibling()` 和 `model->data()` 分别读取并输出该行 `EmployeeKeyRole`、`DisplayRole` 以及点击行列；不要用 `itemFromIndex()` 完成读取。
+8. 构建并运行，验证整行单选、只读列、可编辑列、表头提示和双击输出均符合预期。
+
+练习中的编辑只验证内存模型行为，不要求把修改写回数据库。

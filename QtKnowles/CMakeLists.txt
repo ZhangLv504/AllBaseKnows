@@ -53,8 +53,11 @@ set_target_properties(QtKnowles PROPERTIES
 
 # ---------- 包含目录 ----------
 # 确保 src 本身在头文件搜索路径中，便于源码之间互相 #include 以及找到 AUTOUIC 生成的 ui_*.h
+# `GLOB_RECURSE` 只回答「 哪些文件参与构建 」，
+# `target_include_directories` 才回答「 `#include xxx` 时到哪些目录下找 xxx 」。
 target_include_directories(QtKnowles PRIVATE 
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/dbPack"
     "${CMAKE_SOURCE_DIR}/publics/include"
 )
 
