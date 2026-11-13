@@ -436,3 +436,379 @@ View 只根据自己需要的 Role 取值，业务代码也能读取稳定身份
 8. 构建并运行，验证整行单选、只读列、可编辑列、表头提示和双击输出均符合预期。
 
 练习中的编辑只验证内存模型行为，不要求把修改写回数据库。
+
+---
+
+## 知识点 03：使用 QAbstractTableModel 为业务对象编写自定义表格模型
+
+> 状态：已通关
+>
+> 开始时间：2026-11-11
+>
+> 通关时间：2026-11-13 22:54
+
+### 本轮目标
+
+1. 理解 `QAbstractTableModel` 与 `QStandardItemModel` 的差异。
+2. 能让模型直接管理 `QVector<EmployeeInfo>`，不再为每个单元格创建 `QStandardItem`。
+3. 能正确实现只读表格最核心的 `rowCount()`、`columnCount()`、`data()` 和 `headerData()`。
+4. 能使用 `beginResetModel()` / `endResetModel()` 安全地整批替换模型数据。
+5. 保持数据库访问、业务对象和界面显示职责分离。
+
+本轮先完成只读自定义模型，不实现单元格编辑、行插入和行删除。这些修改协议放到下一个知识点。
+
+### 一、为什么从 QStandardItemModel 走向 QAbstractTableModel
+
+当前员工表使用 `QStandardItemModel` 时，需要为每个格子创建一个 `QStandardItem`：
+
+```cpp
+auto* codeItem = new QStandardItem(employeeInfo.code);
+model->setItem(row, 1, codeItem);
+```
+
+它的优点是方便，适合原型和普通小表格；代价是业务数据已经存在于 `EmployeeInfo` 中，却还要再拆成大量 item 对象。随着列数、行数和 Role 增多，填表代码会越来越长，数据也容易出现两套状态。
+
+自定义 `QAbstractTableModel` 不保存 item。它直接保存业务对象，并在 View 询问某个索引和 Role 时返回对应数据：
+
+```text
+QTableView -> QModelIndex(row, column) -> EmployeeTableModel::data()
+                                      -> QVector<EmployeeInfo>[row]
+```
+
+因此 Model 成为“业务对象到表格协议”的适配器，而不是单元格对象仓库。
+
+### 二、QAbstractTableModel 的最小契约
+
+`QAbstractTableModel` 已经为二维表格实现了树形结构中不需要的部分。一个只读表格至少需要实现：
+
+```cpp
+int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+QVariant data(const QModelIndex& index,
+              int role = Qt::DisplayRole) const override;
+```
+
+为了提供中文表头，再实现：
+
+```cpp
+QVariant headerData(int section,
+                    Qt::Orientation orientation,
+                    int role = Qt::DisplayRole) const override;
+```
+
+它们的职责分别是：
+
+| 函数 | 回答的问题 |
+| --- | --- |
+| `rowCount()` | 当前有多少行 |
+| `columnCount()` | 当前有多少列 |
+| `data()` | 指定行、列和 Role 应返回什么 |
+| `headerData()` | 指定表头 section 和 Role 应返回什么 |
+
+View 会频繁调用这些函数。函数必须只读取内存中的数据，不能在 `data()` 中查询数据库、弹窗或执行耗时操作。
+
+### 三、业务对象和列定义
+
+练习新增：
+
+- `QtKnowles/src/demo1/EmployeeTableModel.h`
+- `QtKnowles/src/demo1/EmployeeTableModel.cpp`
+
+把 `EmployeeInfo` 和员工表专用 Role 移到模型头文件，使数据契约不再属于窗口类：
+
+```cpp
+struct EmployeeInfo
+{
+    QString code;
+    QString name;
+    QString department;
+};
+
+class EmployeeTableModel : public QAbstractTableModel
+{
+    Q_OBJECT
+
+public:
+    enum class Column
+    {
+        Sequence,
+        Code,
+        Name,
+        Department,
+        Count
+    };
+
+    enum class DataRole : int
+    {
+        EmployeeKeyRole = Qt::UserRole + 1
+    };
+
+    explicit EmployeeTableModel(QObject* parent = nullptr);
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+    QVariant data(const QModelIndex& index,
+                  int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section,
+                        Qt::Orientation orientation,
+                        int role = Qt::DisplayRole) const override;
+
+    void setEmployees(QVector<EmployeeInfo> employees);
+
+private:
+    QVector<EmployeeInfo> m_employees;
+};
+```
+
+用 `Column` 枚举代替到处出现的裸列号，使 `data()` 和 `headerData()` 中每一列的含义清楚。`Count` 不是实际列，而是列数哨兵。
+
+### 四、rowCount 和 columnCount
+
+表格模型的顶层数据使用无效 `parent`。如果传入了有效父索引，说明调用方在询问某个单元格下面是否还有子项；普通二维表格没有子项，应返回 0：
+
+```cpp
+int EmployeeTableModel::rowCount(const QModelIndex& parent) const
+{
+    if (parent.isValid()) {
+        return 0;
+    }
+    return m_employees.size();
+}
+
+int EmployeeTableModel::columnCount(const QModelIndex& parent) const
+{
+    if (parent.isValid()) {
+        return 0;
+    }
+    return static_cast<int>(Column::Count);
+}
+```
+
+不能无条件忽略 `parent`。虽然 `QTableView` 的常见调用看似能正常工作，但模型契约会变得不完整，测试器或其他 View 可能把单元格错误地当作还有子数据。
+
+### 五、data：把索引和 Role 映射到业务对象
+
+进入 `data()` 后先验证索引和边界：
+
+```cpp
+if (!index.isValid()
+    || index.row() < 0
+    || index.row() >= m_employees.size()
+    || index.column() < 0
+    || index.column() >= static_cast<int>(Column::Count)) {
+    return {};
+}
+```
+
+然后根据行号取得业务对象：
+
+```cpp
+const EmployeeInfo& employee = m_employees.at(index.row());
+const auto column = static_cast<Column>(index.column());
+```
+
+处理自定义业务键 Role：
+
+```cpp
+if (role == static_cast<int>(DataRole::EmployeeKeyRole)
+    && column == Column::Code) {
+    return employee.code;
+}
+```
+
+处理编号列提示：
+
+```cpp
+if (role == Qt::ToolTipRole && column == Column::Code) {
+    return QStringLiteral("唯一员工编号：%1").arg(employee.code);
+}
+```
+
+最后处理正常显示：
+
+```cpp
+if (role != Qt::DisplayRole) {
+    return {};
+}
+
+switch (column) {
+case Column::Sequence:
+    return index.row() + 1;
+case Column::Code:
+    return employee.code;
+case Column::Name:
+    return employee.name;
+case Column::Department:
+    return employee.department;
+case Column::Count:
+    break;
+}
+
+return {};
+```
+
+序号是当前模型位置的显示结果，不需要存进 `EmployeeInfo`。员工身份仍由数据库唯一约束保证的 `code` 表示，两者职责不同。
+
+### 六、headerData：模型自己提供表头
+
+本轮只处理横向表头；纵向表头已经在窗口中隐藏：
+
+```cpp
+QVariant EmployeeTableModel::headerData(
+    int section,
+    Qt::Orientation orientation,
+    int role) const
+{
+    if (orientation != Qt::Horizontal) {
+        return {};
+    }
+
+    const auto column = static_cast<Column>(section);
+
+    if (role == Qt::ToolTipRole && column == Column::Code) {
+        return QStringLiteral("员工唯一编号，本表中不可编辑");
+    }
+
+    if (role != Qt::DisplayRole) {
+        return {};
+    }
+
+    switch (column) {
+    case Column::Sequence:
+        return QStringLiteral("序号");
+    case Column::Code:
+        return QStringLiteral("编号");
+    case Column::Name:
+        return QStringLiteral("姓名");
+    case Column::Department:
+        return QStringLiteral("部门");
+    case Column::Count:
+        break;
+    }
+
+    return {};
+}
+```
+
+真实实现还应先检查 `section` 是否处于有效列范围，越界时返回空 `QVariant`。
+
+### 七、整批替换数据与 reset 协议
+
+模型的行数和内容发生整体变化时，不能只修改 `m_employees`。View、Selection Model 和代理模型需要收到变化通知：
+
+```cpp
+void EmployeeTableModel::setEmployees(QVector<EmployeeInfo> employees)
+{
+    beginResetModel();
+    m_employees = std::move(employees);
+    endResetModel();
+}
+```
+
+调用顺序必须是：
+
+1. `beginResetModel()`；
+2. 修改底层数据；
+3. `endResetModel()`。
+
+reset 会让旧 `QModelIndex` 失效，并清除/重建相关 View 状态。它适合本轮的“整批重新加载”，但不适合以后每改一个名字就重置整张表；精细修改和通知放到下一知识点。
+
+`setEmployees()` 按值接收参数，调用方可以选择复制，也可以 `std::move()` 转移数据；函数内部最终由 Model 持有业务对象。
+
+### 八、接入当前 DisplayEmployeeInfo
+
+窗口类不再创建 `QStandardItemModel`：
+
+```cpp
+m_employeeInfoModel = new EmployeeTableModel(this);
+ui->tableView->setModel(m_employeeInfoModel);
+```
+
+原来的 `DisplayInfoToTable()` 不再插入行和创建 item，只需要把本次查询缓冲交给模型：
+
+```cpp
+void DisplayEmployeeInfo::DisplayInfoToTable()
+{
+    m_employeeInfoModel->setEmployees(m_buffer);
+}
+```
+
+双击处理仍然只使用通用 Model/View 接口：
+
+```cpp
+const QModelIndex codeIndex = index.sibling(
+    index.row(),
+    static_cast<int>(EmployeeTableModel::Column::Code));
+
+const QString employeeKey = m_employeeInfoModel
+    ->data(codeIndex,
+           static_cast<int>(EmployeeTableModel::DataRole::EmployeeKeyRole))
+    .toString();
+```
+
+这说明上一知识点学习的 `QModelIndex` 和 Role 并不依赖 `QStandardItemModel`。Model 的具体实现可以替换，View 侧读取协议保持稳定。
+
+本轮模型是只读模型，窗口应临时设置：
+
+```cpp
+ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+```
+
+下一知识点再实现 `flags()`、`setData()` 和 `dataChanged()`，恢复姓名、部门编辑。
+
+### 九、企业场景示例
+
+员工列表、订单列表和设备状态表通常已经有领域对象集合。自定义模型可以直接把这些对象映射成列和 Role：
+
+- View 只负责显示和交互；
+- Model 负责二维索引到业务字段的映射；
+- 数据库服务负责查询；
+- 业务键通过自定义 Role 提供给详情、删除等操作。
+
+这样新增一个“状态”列时，只需扩展列枚举、`columnCount()`、`data()` 和 `headerData()`，不必在窗口中新增一段批量创建 item 的循环。
+
+### 十、反例与常见坑
+
+#### 1. 在 data() 中执行 SQL
+
+滚动、重绘和悬停都可能反复调用 `data()`。在其中查询数据库会造成大量重复 I/O 和界面卡顿。先获取业务数据，再让 Model 从内存读取。
+
+#### 2. 忽略 parent
+
+普通表格对有效 `parent` 应返回 0 行、0 列，否则可能破坏模型的平面结构契约。
+
+#### 3. 不检查 index 边界
+
+模型 reset、空表或错误调用都可能产生无效索引。直接访问 `m_employees[index.row()]` 会越界。
+
+#### 4. 修改容器但不发通知
+
+View 不会自动知道普通 `QVector` 已变化。整批替换至少需要 `beginResetModel()` / `endResetModel()`。
+
+#### 5. 每次小改动都 reset
+
+reset 会使索引和选择状态失效。它适合整批替换，不应代替精细的插入、删除和 `dataChanged()` 通知。
+
+#### 6. 继续在窗口中创建 QStandardItem
+
+切换到自定义模型后，不应再保留 item 填充循环。数据映射必须集中在 `EmployeeTableModel::data()` 中。
+
+#### 7. 从后台线程直接修改 Model
+
+Qt GUI 使用的 Model 应在 GUI 线程修改。后台线程可以准备普通数据，完成后再通过线程安全的信号把结果交回 GUI 线程；极端数据和异步加载以后单独学习。
+
+### 十一、本轮练习
+
+在 `QtKnowles/src/demo1` 中完成以下增量修改：
+
+1. 新建 `EmployeeTableModel.h/.cpp`，继承 `QAbstractTableModel`。
+2. 将 `EmployeeInfo` 和员工表的 `DataRole` 移到模型头文件，并定义命名的 `Column` 枚举。
+3. 实现 `rowCount()`、`columnCount()`、`data()` 和 `headerData()`；有效 `parent` 返回 0，所有索引都要做边界检查。
+4. 支持序号、编号、姓名、部门四列的 `DisplayRole`，编号列的 `ToolTipRole` 和 `EmployeeKeyRole`。
+5. 实现 `setEmployees()`，严格使用 `beginResetModel()` / `endResetModel()` 包围底层容器替换。
+6. 将 `DisplayEmployeeInfo` 的模型成员改为 `EmployeeTableModel*`，删除 `QStandardItem` 创建、插行和清行代码。
+7. `DisplayInfoToTable()` 只负责把 `m_buffer` 交给自定义模型；双击读取继续使用 `sibling()` 和 `model->data()`。
+8. 本轮将表格设为 `NoEditTriggers`，不实现 `flags()`、`setData()`、行增删或数据库回写。
+9. 构建并运行：确认表头和数据正常、第一次与第二次点击“显示数据”均无重复、整行单选仍正常、双击仍能读取唯一编号。
+
+本轮重点是建立自定义只读模型的正确骨架，不提前加入分页、排序、编辑和异步加载。
