@@ -24,6 +24,7 @@ Do not assume progress from a previous chat. Restore it from the files above. If
 | Qt | `QtKnowles` | `Doc/Qt知识点.md` |
 | Python | `PythonKnows` | `Doc/Python知识点.md` |
 | Java | `JavaKnows/StudyProj` | `Doc/Java知识点.md` |
+| CMake 构建 | 复用现有工程的 `CMakeLists.txt`（如 `QtKnowles`） | `Doc/CMake知识点.md` |
 
 For other topics, follow `Doc/需求.md`. If no existing project or note file clearly matches, ask the user where the topic should be stored before creating anything.
 

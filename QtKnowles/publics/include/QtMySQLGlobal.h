@@ -1,4 +1,4 @@
-/**
+﻿/**
 * @file QtMySQLGlobal.h
  * @brief QtMySQL 的导出宏。
  */

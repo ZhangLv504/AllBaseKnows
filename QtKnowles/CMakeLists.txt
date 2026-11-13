@@ -43,6 +43,10 @@ file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
 
 add_executable(QtKnowles
         ${APP_SOURCES}
+        src/demo2/DisplayEmployeeInfo2.cpp
+        src/demo2/DisplayEmployeeInfo2.h
+        src/demo2/DisplayEmployeeInfo2.ui
+        publics/include/CodeFormat.h
 )
 
 # 可执行文件与运行时依赖统一输出到交付目录 bin

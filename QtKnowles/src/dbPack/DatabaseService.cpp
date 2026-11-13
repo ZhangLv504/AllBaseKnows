@@ -39,7 +39,7 @@ bool DatabaseService::init(const QString& host, quint16 port, const QString& dat
         return true;
 
     // 显式指定连接名，便于调试识别；单例只会建立这一个连接
-    auto db = std::make_unique<qtmysql::MySqlDatabase>(QStringLiteral("app_main"));
+    auto db = std::make_unique<qtmysql::MySqlDatabase>(QString("app_main"));
 
     QString localError;
     if (!db->connect(host, port, database, password, &localError)) {

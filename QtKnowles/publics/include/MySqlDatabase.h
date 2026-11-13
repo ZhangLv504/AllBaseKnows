@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file MySqlDatabase.h
  * @brief QtSql + QMYSQL 的轻量封装：连接、执行、查询与事务。
  */
